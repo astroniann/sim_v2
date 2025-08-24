@@ -30,7 +30,7 @@ class RealisticBatchAnalytics:
         self.OUT_DIR = pathlib.Path("results")
         self.SCENARIOS = [1, 2, 3, 4]
         self.REPLICAS = 3
-        self.DURATION = 300  # 5 minutes
+        self.DURATION = 600  # 10 minutes - realistic duration for 10,000 requests
         self.JOBS = min(4, mp.cpu_count())
         
         # Realistic configurations with different cache sizes
