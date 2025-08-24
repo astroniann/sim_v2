@@ -30,7 +30,7 @@ class RealisticBatchAnalytics:
         self.OUT_DIR = pathlib.Path("results")
         self.SCENARIOS = [1, 2, 3, 4]
         self.REPLICAS = 3
-        self.DURATION = 600  # 10 minutes - realistic duration for 10,000 requests
+        # No duration constraint - requests resolve naturally
         self.JOBS = min(4, mp.cpu_count())
         
         # Realistic configurations with different cache sizes
@@ -66,7 +66,6 @@ class RealisticBatchAnalytics:
             self.NS3_EXECUTABLE, "run",
             f"scratch/tiered-edge-realistic "
             f"--scenario={scenario} "
-            f"--duration={self.DURATION} "
             f"--runTag={tag} "
             f"--users={config['users']} "
             f"--requestsPerUser=10 "  # 10,000 total requests
@@ -88,7 +87,7 @@ class RealisticBatchAnalytics:
                 check=True, 
                 capture_output=True, 
                 text=True,
-                timeout=900,  # 15 minute timeout
+                                 timeout=1800,  # 30 minute timeout for natural processing
                 env=dict(os.environ, NS_GLOBAL_VALUE=f"RngSeed={seed}", NS_GLOBAL_VALUE2=f"RngRun={run}")
             )
             duration = time.time() - start

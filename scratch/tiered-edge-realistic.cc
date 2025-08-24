@@ -273,23 +273,22 @@ private:
     uint32_t userId;
     uint32_t totalRequests;
     uint32_t requestsSent;
-    Time interRequestTime;
     Ptr<Socket> socket;
     std::vector<Ptr<Node>> edgeNodes;
     std::vector<Ptr<Node>> cdnNodes;
     
-    // Request patterns
+    // Request patterns - natural arrival times
     std::uniform_int_distribution<uint32_t> contentDist;
     std::uniform_int_distribution<uint32_t> complexityDist;
     std::exponential_distribution<double> timeDist;
     std::mt19937 rng;
     
 public:
-    UserApp(uint32_t id, uint32_t requests, Time interval, 
+    UserApp(uint32_t id, uint32_t requests, 
             const std::vector<Ptr<Node>>& edges, const std::vector<Ptr<Node>>& cdns)
-        : userId(id), totalRequests(requests), requestsSent(0), interRequestTime(interval),
+        : userId(id), totalRequests(requests), requestsSent(0),
           edgeNodes(edges), cdnNodes(cdns), contentDist(1, 1000), complexityDist(100, 5000),
-          timeDist(1.0), rng(id) {
+          timeDist(0.1), rng(id) { // Natural arrival rate
         socket = Socket::CreateSocket(GetNode(), TypeId::LookupByName("ns3::UdpSocketFactory"));
     }
     
@@ -306,8 +305,9 @@ public:
 private:
     void ScheduleNextRequest() {
         if (requestsSent < totalRequests) {
-            Simulator::Schedule(Seconds(timeDist(rng) * interRequestTime.GetSeconds()), 
-                              &UserApp::SendRequest, this);
+            // Natural request arrival - exponential distribution with mean 0.1 seconds
+            double nextInterval = timeDist(rng);
+            Simulator::Schedule(Seconds(nextInterval), &UserApp::SendRequest, this);
         }
     }
     
@@ -380,7 +380,6 @@ private:
 int main(int argc, char** argv) {
     uint32_t scenario = 1;
     std::string tag = "realistic";
-    double duration = 300.0; // 5 minutes
     std::string logDir = "results";
     uint32_t numUsers = 1000;
     uint32_t requestsPerUser = 10; // 10,000 total requests
@@ -401,7 +400,6 @@ int main(int argc, char** argv) {
     CommandLine cmd(__FILE__);
     cmd.AddValue("scenario", "Scenario number", scenario);
     cmd.AddValue("runTag", "Run tag for logging", tag);
-    cmd.AddValue("duration", "Simulation duration in seconds", duration);
     cmd.AddValue("logDir", "Directory to write CSV logs", logDir);
     cmd.AddValue("users", "Number of users", numUsers);
     cmd.AddValue("requestsPerUser", "Requests per user", requestsPerUser);
@@ -493,10 +491,9 @@ int main(int argc, char** argv) {
     
     // Create applications
     ApplicationContainer apps;
-    Time interRequestTime = Seconds(duration / requestsPerUser);
-    
+    // No time constraints - let requests resolve naturally
     for (uint32_t i = 0; i < numUsers; ++i) {
-        Ptr<UserApp> app = CreateObject<UserApp>(i, requestsPerUser, interRequestTime, 
+        Ptr<UserApp> app = CreateObject<UserApp>(i, requestsPerUser, 
                                                edgeNodePtrs, cdnNodePtrs);
         userNodes.Get(i)->AddApplication(app);
         apps.Add(app);
@@ -506,11 +503,11 @@ int main(int argc, char** argv) {
     FlowMonitorHelper flowmon;
     Ptr<FlowMonitor> monitor = flowmon.InstallAll();
     
-    // Start simulation
+    // Start simulation - no time constraints
     apps.Start(Seconds(1.0));
-    apps.Stop(Seconds(duration));
     
-    Simulator::Stop(Seconds(duration + 1.0));
+    // Stop when all requests are processed
+    Simulator::Stop(Seconds(3600.0)); // 1 hour maximum as safety
     Simulator::Run();
     
     // Collect final metrics
