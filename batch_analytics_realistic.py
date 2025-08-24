@@ -87,7 +87,7 @@ class RealisticBatchAnalytics:
                 check=True, 
                 capture_output=True, 
                 text=True,
-                                 timeout=1800,  # 30 minute timeout for natural processing
+                                 timeout=None,  # No timeout - let simulation run naturally
                 env=dict(os.environ, NS_GLOBAL_VALUE=f"RngSeed={seed}", NS_GLOBAL_VALUE2=f"RngRun={run}")
             )
             duration = time.time() - start

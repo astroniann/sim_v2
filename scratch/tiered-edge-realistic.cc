@@ -263,6 +263,9 @@ struct GlobalMetrics {
 
 static GlobalMetrics g_metrics;
 static std::vector<std::unique_ptr<EdgeNode>> g_edgeNodes;
+static uint32_t g_totalRequests = 0;
+static uint32_t g_completedRequests = 0;
+static uint32_t g_totalUsers = 0;
 
 // ============================================================================
 // User Application
@@ -339,7 +342,14 @@ private:
         }
         
         requestsSent++;
-        ScheduleNextRequest();
+        g_completedRequests++;
+        
+        // Check if all requests are completed
+        if (g_completedRequests >= g_totalRequests) {
+            Simulator::Stop();
+        } else {
+            ScheduleNextRequest();
+        }
     }
     
     Ptr<Node> SelectTargetNode() {
@@ -489,6 +499,11 @@ int main(int argc, char** argv) {
         ipv4.NewNetwork();
     }
     
+    // Set global request counter
+    g_totalRequests = numUsers * requestsPerUser;
+    g_completedRequests = 0;
+    g_totalUsers = numUsers;
+    
     // Create applications
     ApplicationContainer apps;
     // No time constraints - let requests resolve naturally
@@ -506,8 +521,8 @@ int main(int argc, char** argv) {
     // Start simulation - no time constraints
     apps.Start(Seconds(1.0));
     
-    // Stop when all requests are processed
-    Simulator::Stop(Seconds(3600.0)); // 1 hour maximum as safety
+    // No time constraints - let all requests process naturally
+    // Simulation will stop when all requests are completed
     Simulator::Run();
     
     // Collect final metrics
